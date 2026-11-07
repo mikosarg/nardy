@@ -27,18 +27,19 @@ h1,h2{margin:0;font-weight:700}
   min-height:100vh;min-height:100dvh;align-content:center}
 .top{grid-area:top;display:flex;flex-direction:column;gap:8px;min-width:0}
 .ctl{grid-area:ctl;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.board{grid-area:board;position:relative;width:min(100%,calc((100vh - 245px)*1000/760));width:min(100%,calc((100dvh - 245px)*1000/760));
-  min-width:280px;margin:auto;aspect-ratio:1000/760;container-type:inline-size;border-radius:10px;box-shadow:0 12px 34px #000a;user-select:none;-webkit-user-select:none}
+.board{grid-area:board;position:relative;width:min(100%,calc((100vh - 295px)*1000/760));width:min(100%,calc((100dvh - 295px)*1000/760));
+  min-width:280px;margin:auto;aspect-ratio:1000/760;container-type:inline-size;border-radius:10px;box-shadow:0 12px 34px #000a;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .board svg{position:absolute;inset:0;width:100%;height:100%;display:block;border-radius:10px}
-#dyn{will-change:transform}
+#dyn{will-change:transform;touch-action:none}
 @media (orientation:landscape){
-  .app{grid-template-areas:"board top" "board ctl";grid-template-columns:auto clamp(180px,24vw,280px);grid-template-rows:1fr 1fr;max-width:none;align-items:center}
+  .app{grid-template-areas:"board top" "board ctl";grid-template-columns:auto clamp(180px,24vw,280px);grid-template-rows:auto auto;max-width:none;align-items:center}
   .top{align-self:end}.ctl{align-self:start;grid-template-columns:1fr}
   .board{width:min(calc(100vw - clamp(180px,24vw,280px) - 32px),calc((100vh - 16px)*1000/760));
     width:min(calc(100vw - clamp(180px,24vw,280px) - 32px),calc((100dvh - 16px)*1000/760))}
 }
 @media (orientation:landscape) and (max-height:480px){
   body{font-size:14px}.btn{min-height:38px!important;padding:4px 8px!important}.top,.ctl,.app{gap:5px}
+  .ctl{grid-template-columns:1fr 1fr}.ctl .btn.quit{grid-column:auto}
   .brand h1{font-size:18px!important}.chip{padding:3px 8px!important}.status{padding:5px 8px!important;min-height:0!important}
 }
 
@@ -66,6 +67,7 @@ h1,h2{margin:0;font-weight:700}
 .btn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 .btn.main{background:linear-gradient(#ecbd5e,var(--brass2));border-color:#f0ca7c;color:#2a1608}
 .btn.main:not(:disabled){box-shadow:0 0 14px #d9a44155}
+.btn.quit{grid-column:1/-1;min-height:40px;color:#ffc0b2;border-color:#8a4335;background:linear-gradient(#4b2118,#35160f)}
 
 /* Кости */
 #dice{position:absolute;left:65%;width:25%;top:50%;height:0;display:flex;align-items:center;justify-content:center;gap:1cqw;perspective:45cqw;pointer-events:none;--d:6.2cqw}
@@ -81,7 +83,8 @@ h1,h2{margin:0;font-weight:700}
 
 /* Подсветка */
 .ck{transition:transform .34s cubic-bezier(.3,.8,.3,1)}
-.noanim .ck{transition:none}
+.noanim .ck,.ck.dragging{transition:none}
+.drag-on .zone{cursor:grabbing}
 .dest{animation:pulse 1.1s ease-in-out infinite}
 .src{fill:none;stroke:#ffd76e;stroke-width:3;opacity:.85}
 .src.sel{stroke:#fff;stroke-width:5;opacity:1;animation:pulse .8s ease-in-out infinite}
@@ -124,7 +127,7 @@ h1,h2{margin:0;font-weight:700}
         <radialGradient id="gw" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#fffef8"/><stop offset=".65" stop-color="#eadcb9"/><stop offset="1" stop-color="#bfa878"/></radialGradient>
         <radialGradient id="gb" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#6f4835"/><stop offset=".6" stop-color="#2f1a11"/><stop offset="1" stop-color="#120804"/></radialGradient>
       </defs>
-      <g id="checkers"></g><g id="labels"></g><g id="marks" pointer-events="none"></g><g id="zones"></g>
+      <g id="checkers"></g><g id="labels"></g><g id="marks" pointer-events="none"></g><g id="lift" pointer-events="none"></g><g id="zones"></g>
     </svg>
     <div id="dice"></div>
   </div>
@@ -133,6 +136,7 @@ h1,h2{margin:0;font-weight:700}
     <button class="btn main" id="btnRoll" disabled>Бросить кости</button>
     <button class="btn" id="btnUndo" disabled>Отменить ход</button>
     <button class="btn" id="btnEnd" disabled>Завершить ход</button>
+    <button class="btn quit" id="btnQuit" disabled>Завершить игру</button>
   </section>
 </main>
 
@@ -153,6 +157,17 @@ h1,h2{margin:0;font-weight:700}
     <div class="row">
       <button class="btn main" id="btnCopy">Скопировать ссылку</button>
       <button class="btn" id="btnShare" hidden>Поделиться</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="confirm" hidden>
+  <div class="card" role="alertdialog" aria-labelledby="confirmTitle">
+    <h2 id="confirmTitle">Завершить игру?</h2>
+    <p>Партия закончится сразу у обоих игроков. Очки за неё никому не начисляются.</p>
+    <div class="row">
+      <button class="btn main" id="btnQuitYes">Да, завершить</button>
+      <button class="btn" id="btnQuitNo">Отмена</button>
     </div>
   </div>
 </div>
@@ -303,7 +318,7 @@ function randId(len) {
 /* ===== Логика хозяина: только он меняет состояние и бросает кости ===== */
 function emptyState() {
   return { pts: Engine.initialPoints(), bar: [0, 0], off: [0, 0], turn: 0, phase: 'waiting', dice: [], rem: [], hist: [],
-           rollId: 0, opening: false, winner: null, kind: 0, score: [0, 0] };
+           rollId: 0, opening: false, winner: null, kind: 0, endedBy: null, score: [0, 0] };
 }
 function startGame() {
   const score = G.score, rollId = G.rollId;
@@ -316,6 +331,13 @@ function nextTurn() {
 function act(seat, a) {
   if (!a || typeof a !== 'object') return;
   if (a.a === 'new') { if (G.phase === 'over') { startGame(); commit(); } return; }
+  if (a.a === 'resign') {          // завершить игру может любой игрок, даже не в свой ход
+    if (G.phase === 'roll' || G.phase === 'move') {
+      G.phase = 'over'; G.winner = null; G.kind = 0; G.endedBy = seat; G.dice = []; G.rem = []; G.hist = [];
+      commit();
+    }
+    return;
+  }
   if (seat !== G.turn) return;
   if (a.a === 'roll' && G.phase === 'roll') {
     const x = rollDie(), y = rollDie();
@@ -566,7 +588,13 @@ function buildDynamic() {
   }
   el('rect', { class: 'zone', 'data-z': 'bar', x: BARX - BAR_W / 2, y: TOP, width: BAR_W, height: BOT - TOP }, z);
   el('rect', { class: 'zone', 'data-z': 'off', x: 908, y: TOP, width: 70, height: BOT - TOP }, z);
+  z.addEventListener('pointerdown', dragPress);
+  addEventListener('pointermove', dragMove);
+  addEventListener('pointerup', dragRelease);
+  addEventListener('pointercancel', dragAbort);
+  addEventListener('blur', dragAbort);
   z.addEventListener('click', e => {
+    if (suppressClick) { suppressClick = false; return; }   // это был конец перетаскивания, а не нажатие
     const t = e.target;
     if (t.dataset.d) clickZone(fromView(+t.dataset.d));
     else if (t.dataset.z) clickZone(t.dataset.z);
@@ -610,7 +638,7 @@ function renderCheckers() {
         p.key = c.key;
       }
       p.el.style.opacity = 1;
-      p.el.style.transform = xf(c);
+      if (!drag || p.el !== drag.el) p.el.style.transform = xf(c);
     }
     for (const p of free) if (!keys.has(p.key)) { p.key = null; p.el.style.opacity = 0; }
   }
@@ -638,25 +666,117 @@ function topOf(z) {                     // где рисовать кольцо 
 function renderMarks() {
   const m = $('marks'); m.textContent = '';
   if (!legalNow.length) return;
-  const froms = new Set(legalNow.map(l => l.from));
-  for (const f of froms) {
-    const c = topOf(f);
-    el('circle', { class: 'src' + (f === selected ? ' sel' : ''), cx: c.x, cy: c.y, r: R + 2 }, m);
+  if (!drag) {
+    const froms = new Set(legalNow.map(l => l.from));
+    for (const f of froms) {
+      const c = topOf(f);
+      el('circle', { class: 'src' + (f === selected ? ' sel' : ''), cx: c.x, cy: c.y, r: R + 2 }, m);
+    }
   }
   if (selected === null) return;
   for (const l of legalNow) {
     if (l.from !== selected) continue;
+    const over = drag && drag.hover === l.to;     // пункт под перетаскиваемой шашкой горит ярче
     if (l.to === 'off') {
-      el('rect', { class: 'dest', x: 910, y: TOP + 2, width: 66, height: BOT - TOP - 4, rx: 6, fill: '#ffd76e', 'fill-opacity': .32, stroke: '#ffe9ad', 'stroke-width': 3 }, m);
+      el('rect', { class: over ? '' : 'dest', x: 910, y: TOP + 2, width: 66, height: BOT - TOP - 4, rx: 6, fill: '#ffd76e', 'fill-opacity': over ? .7 : .32, stroke: '#ffe9ad', 'stroke-width': over ? 6 : 3 }, m);
       continue;
     }
     const d = toView(l.to), x = columnX(d), up = isTop(d), base = up ? TOP : BOT, tip = up ? TOP + PTH : BOT - PTH;
     const col = l.hit ? '#ff7a5c' : '#8dff9d';
-    el('polygon', { class: 'dest', points: `${x - PW / 2 + 2},${base} ${x + PW / 2 - 2},${base} ${x},${tip}`, fill: col, 'fill-opacity': .42, stroke: col, 'stroke-width': 3 }, m);
+    el('polygon', { class: over ? '' : 'dest', points: `${x - PW / 2 + 2},${base} ${x + PW / 2 - 2},${base} ${x},${tip}`, fill: col, 'fill-opacity': over ? .78 : .42, stroke: col, 'stroke-width': over ? 6 : 3 }, m);
     const n = Math.abs(G.pts[l.to]), own = l.hit ? 0 : n;
     const c = stackPos(d, Math.min(own, 4), Math.min(own + 1, 5));
     el('circle', { class: 'dest', cx: c.x, cy: c.y, r: R - 7, fill: 'none', stroke: col, 'stroke-width': 5, 'stroke-dasharray': '7 6' }, m);
   }
+}
+
+/* Перетаскивание: мышь и палец через Pointer Events. Короткое нажатие остаётся обычным кликом. */
+const LIFT_TOUCH = 62;      // на телефоне шашка идёт чуть выше пальца, чтобы её было видно
+let press = null, drag = null, suppressClick = false;
+
+function zoneAt(x, y) {
+  if (x >= 900) return 'off';
+  if (x < LEFT) return null;
+  if (Math.abs(x - BARX) <= BAR_W / 2) return 'bar';
+  for (let d = 1; d <= 24; d++) {
+    if (Math.abs(x - columnX(d)) <= PW / 2 && isTop(d) === (y < MID)) return fromView(d);
+  }
+  return null;
+}
+function dragPress(e) {
+  suppressClick = false;
+  if (!e.isPrimary || e.button !== 0 || press || drag) return;
+  const ds = e.target.dataset, z = ds.d ? fromView(+ds.d) : ds.z;
+  if (!legalNow.some(l => l.from === z)) return;
+  press = { id: e.pointerId, z, x: e.clientX, y: e.clientY, touch: e.pointerType !== 'mouse', target: e.target };
+}
+function dragBegin(e) {
+  const z = press.z;
+  if (!legalNow.some(l => l.from === z)) { press = null; return; }
+  const key = z === 'bar' ? `b:${G.bar[me] - 1}` : `p${z}:${Math.abs(G.pts[z]) - 1}`;
+  const p = pool[me].find(q => q.key === key);
+  if (!p) { press = null; return; }
+  drag = { el: p.el, from: z, lift: press.touch ? LIFT_TOUCH : 0, hover: null, zone: z };
+  try { press.target.setPointerCapture(press.id); } catch {}
+  p.el.classList.add('dragging');
+  $('lift').appendChild(p.el);                // поверх шашек и подсветки
+  $('board').classList.add('drag-on');
+  selected = z;
+  renderMarks();
+}
+function dragFollow(e) {
+  const r = $('dyn').getBoundingClientRect();
+  const rawX = (e.clientX - r.left) / r.width * W, rawY = (e.clientY - r.top) / r.height * H;
+  const x = Math.min(W - R, Math.max(R, rawX)), y = Math.min(H - R, Math.max(R, rawY - drag.lift));
+  drag.el.style.transform = `translate(${x}px,${y}px) scale(1.12)`;
+  const outside = rawX < 0 || rawX > W || rawY < 0 || rawY > H;
+  drag.zone = outside ? null : zoneAt(x, y);
+  const hover = legalNow.some(l => l.from === drag.from && l.to === drag.zone) ? drag.zone : null;
+  if (hover !== drag.hover) { drag.hover = hover; renderMarks(); }
+}
+function dragMove(e) {
+  if (!press || e.pointerId !== press.id) return;
+  if (!drag) {
+    if (Math.hypot(e.clientX - press.x, e.clientY - press.y) < (press.touch ? 8 : 5)) return;
+    dragBegin(e);
+    if (!drag) return;
+  }
+  dragFollow(e);
+}
+function dragStop() {
+  if (!drag) return;
+  suppressClick = true;                  // клик после отпускания не должен считаться нажатием
+  drag.el.classList.remove('dragging');
+  $('checkers').appendChild(drag.el);    // назад в общий слой; дальше шашка плавно уедет на место
+  void drag.el.getBoundingClientRect();
+  $('board').classList.remove('drag-on');
+  drag = null;
+}
+function dragRelease(e) {
+  if (!press || e.pointerId !== press.id) return;
+  press = null;
+  if (!drag) return;                     // палец не сдвинулся — сработает обычный клик
+  dragFollow(e);
+  const { hover, from, zone } = drag;
+  dragStop();
+  selected = null;
+  if (hover === null) {                  // незаконный пункт: шашка плавно возвращается на место
+    render();
+    if (zone !== from) toast('Так ходить нельзя — шашка вернулась на место');
+    return;
+  }
+  const m = legalNow.filter(l => l.from === from && l.to === hover).sort((a, b) => a.die - b.die)[0];
+  send({ a: 'move', from: m.from, to: m.to, die: m.die });
+  // Гость ждёт ответ хозяина; если его не будет (обрыв связи), шашка вернётся сама
+  if (!isHost) setTimeout(() => { if (!drag && G) render(); }, 1500);
+}
+function dragAbort(e) {
+  if (e.type === 'pointercancel' && press && e.pointerId !== press.id) return;
+  press = null;
+  if (!drag) return;
+  dragStop();
+  selected = null;
+  render();
 }
 
 /* Кости */
@@ -705,7 +825,7 @@ const canAct = () => G && (isHost || connected());
 function statusText() {
   if (!G) return 'Подключение к комнате…';
   if (G.phase === 'waiting') return 'Ожидаем соперника…';
-  if (G.phase === 'over') return G.winner === me ? 'Вы победили!' : 'Победил соперник';
+  if (G.phase === 'over') return G.endedBy != null ? 'Игра завершена' : G.winner === me ? 'Вы победили!' : 'Победил соперник';
   const mine = G.turn === me;
   if (G.phase === 'roll') return mine ? 'Ваш ход — бросьте кости' : 'Ход соперника: бросает кости';
   if (!mine) return G.opening ? `Первым ходит соперник (${G.dice[0]} : ${G.dice[1]})` : 'Ход соперника';
@@ -713,7 +833,7 @@ function statusText() {
     if (!G.rem.length) return 'Ход сделан — завершите его или отмените';
     return G.hist.length ? 'Больше ходов нет — завершите ход' : 'Нет возможных ходов — очередь переходит';
   }
-  const hint = G.bar[me] ? 'введите шашку с бара' : selected === null ? 'выберите шашку' : 'выберите пункт';
+  const hint = G.bar[me] ? 'введите шашку с бара' : selected === null ? 'перетащите или нажмите шашку' : 'выберите пункт';
   return `${G.opening ? 'Вы начинаете' : 'Ваш ход'} — ${hint}`;
 }
 function renderConn() {
@@ -740,6 +860,8 @@ function render() {
   const has = !!G;
   if (has) {
     legalNow = (G.turn === me && canAct()) ? Engine.legal(G) : [];
+    if (press && !legalNow.some(l => l.from === press.z)) press = null;
+    if (drag && !legalNow.some(l => l.from === drag.from)) dragStop();   // партия закончилась или пропала связь
     if (selected !== null && !legalNow.some(l => l.from === selected)) selected = null;
     if (selected === null && legalNow.length && legalNow.every(l => l.from === 'bar')) selected = 'bar';
     if (firstPaint) { $('checkers').classList.add('noanim'); }
@@ -767,13 +889,22 @@ function render() {
   $('btnEnd').disabled = !canEnd;
   $('btnEnd').classList.toggle('main', !!canEnd);
   $('btnRoll').classList.toggle('main', !canEnd);
+  const canQuit = active && canAct();
+  $('btnQuit').disabled = !canQuit;
+  if (!canQuit) $('confirm').hidden = true;
 
   $('invite').hidden = !(isHost && has && G.phase === 'waiting');
   $('over').hidden = !(has && G.phase === 'over');
   if (has && G.phase === 'over') {
     const names = { 1: 'обычная победа', 2: 'марс — победа вдвойне', 3: 'кокс — победа втройне' };
-    $('overTitle').textContent = G.winner === me ? 'Вы победили!' : 'Победил соперник';
-    $('overText').textContent = `Итог партии: ${names[G.kind]}. Счёт ${G.score[me]} : ${G.score[1 - me]}.`;
+    if (G.endedBy != null) {
+      $('overTitle').textContent = 'Игра завершена';
+      $('overText').textContent = `${G.endedBy === me ? 'Вы завершили игру' : 'Соперник завершил игру'}, очки за партию не начислены. ` +
+        `Выведено шашек: у вас ${G.off[me]}, у соперника ${G.off[1 - me]}. Общий счёт ${G.score[me]} : ${G.score[1 - me]}.`;
+    } else {
+      $('overTitle').textContent = G.winner === me ? 'Вы победили!' : 'Победил соперник';
+      $('overText').textContent = `Итог партии: ${names[G.kind]}. Счёт ${G.score[me]} : ${G.score[1 - me]}.`;
+    }
     $('btnNew').disabled = !canAct();
   }
   renderConn();
@@ -844,6 +975,10 @@ function boot() {
   $('btnUndo').onclick = () => send({ a: 'undo' });
   $('btnEnd').onclick = () => send({ a: 'end' });
   $('btnNew').onclick = () => send({ a: 'new' });
+  $('btnQuit').onclick = () => { dragAbort({ type: 'quit' }); $('confirm').hidden = false; $('btnQuitNo').focus(); };
+  $('btnQuitNo').onclick = () => { $('confirm').hidden = true; };
+  $('btnQuitYes').onclick = () => { $('confirm').hidden = true; send({ a: 'resign' }); };
+  addEventListener('keydown', e => { if (e.key === 'Escape') { $('confirm').hidden = true; dragAbort({ type: 'key' }); } });
   $('btnCopy').onclick = async () => {
     try { await navigator.clipboard.writeText($('link').value); }
     catch { $('link').select(); try { document.execCommand('copy'); } catch {} }
